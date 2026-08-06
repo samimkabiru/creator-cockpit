@@ -189,7 +189,7 @@ function DetailPanel({
   const effective = scores ?? {
     contrast: 82,
     textDensity: 78,
-    visualSimplicity: 88,
+    edgeClutter: 88,
     composite: 83,
   };
 
@@ -228,7 +228,7 @@ function DetailPanel({
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "12px", minWidth: "200px" }}>
           <ScoreBar label="Contrast & Visibility" value={effective.contrast} />
           <ScoreBar label="Text & Graphic Balance" value={effective.textDensity} />
-          <ScoreBar label="Visual Simplicity (Uncluttered)" value={effective.visualSimplicity} />
+          <ScoreBar label="Visual Simplicity (Uncluttered)" value={effective.edgeClutter} />
         </div>
       </div>
 

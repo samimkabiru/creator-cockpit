@@ -11,6 +11,11 @@ export interface ShortCandidate {
   reason: string;
 }
 
+export interface ChecklistItem {
+  item: string;
+  status: "ok" | "warning" | "missing";
+}
+
 export interface ProcessResult {
   chapters: Chapter[];
   titles: string[]; // exactly 3
@@ -19,6 +24,7 @@ export interface ProcessResult {
   pinnedComment: string;
   tweet: string;
   shorts: ShortCandidate[];
+  checklist?: ChecklistItem[]; // optional until backend prompt is updated
 }
 
 export interface ProcessJobResponse {

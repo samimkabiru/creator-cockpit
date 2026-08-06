@@ -13,6 +13,7 @@ import HashtagsTab from "@/components/tabs/HashtagsTab";
 import PinnedCommentTab from "@/components/tabs/PinnedCommentTab";
 import TweetTab from "@/components/tabs/TweetTab";
 import ThumbnailsTab from "@/components/tabs/ThumbnailsTab";
+import ChecklistTab from "@/components/tabs/ChecklistTab";
 
 import {
   startProcessJob,
@@ -189,6 +190,15 @@ export default function Home() {
           <ThumbnailsTab
             status={thumbnailStatus}
             variants={thumbnailResponse?.variants}
+          />
+        );
+      case "checklist":
+        return (
+          <ChecklistTab
+            processStatus={processStatus}
+            thumbnailStatus={thumbnailStatus}
+            processResult={result}
+            thumbnailResult={thumbnailResponse ?? undefined}
           />
         );
     }
