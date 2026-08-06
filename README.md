@@ -72,7 +72,7 @@ npm install
 
 ```env
 GEMINI_API_KEY=your_gemini_key
-ASSEMBLYAI_API_KEY=84d0010657a54ae2a427ed61d7111b65
+ASSEMBLYAI_API_KEY=your_assemblyai_key
 DASHSCOPE_API_KEY=your_qwen_key
 ```
 
