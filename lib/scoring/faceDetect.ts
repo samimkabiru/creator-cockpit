@@ -17,26 +17,26 @@ let faceApiLoaded = false;
 async function ensureFaceApi() {
   if (typeof window === "undefined") return null;
   if (faceApiLoaded) {
-    const faceapi = await import("face-api.js");
-    return faceapi;
+    try {
+      const faceapi = await import("face-api.js");
+      return faceapi;
+    } catch {
+      return null;
+    }
   }
-
-  const faceapi = await import("face-api.js");
-
-  // Load the tiny face detector model from CDN
-  // In production, these would be served from /public/models/
-  const MODEL_URL =
-    "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights";
 
   try {
+    const faceapi = await import("face-api.js");
+    const MODEL_URL =
+      "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights";
+
     await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
     faceApiLoaded = true;
+    return faceapi;
   } catch (err) {
-    console.warn("[faceDetect] Could not load face-api.js model:", err);
+    console.warn("[faceDetect] Could not load face-api.js model or WebGL backend:", err);
     return null;
   }
-
-  return faceapi;
 }
 
 interface FaceScore {

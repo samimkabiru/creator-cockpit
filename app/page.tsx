@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import UploadPanel from "@/components/UploadPanel";
-import TabRail, { TABS, type TabId } from "@/components/TabRail";
+import TabRail, { type TabId } from "@/components/TabRail";
 import StatusLight from "@/components/StatusLight";
 
 import ChaptersTab from "@/components/tabs/ChaptersTab";
@@ -15,24 +15,36 @@ import TweetTab from "@/components/tabs/TweetTab";
 import ThumbnailsTab from "@/components/tabs/ThumbnailsTab";
 import ChecklistTab from "@/components/tabs/ChecklistTab";
 
-import { startProcessJob, startThumbnailJob, getProcessJob, getThumbnailJob } from "@/lib/api";
+import {
+  startProcessJob,
+  getProcessJob,
+  getThumbnailJob,
+  generateAIThumbnails,
+} from "@/lib/api";
 import { usePolling } from "@/lib/usePolling";
+import { extractFramesAtTimestamps, extractEvenlySpacedFrames } from "@/lib/frameExtractor";
 
 import type { ProcessJobResponse, ThumbnailJobResponse } from "@/types/api";
 
 export default function Home() {
   // ---------------------------------------------------------------------------
-  // Job IDs — set when user submits
+  // State
   // ---------------------------------------------------------------------------
   const [processJobId, setProcessJobId] = useState<string | null>(null);
   const [thumbnailJobId, setThumbnailJobId] = useState<string | null>(null);
   const [activeLabel, setActiveLabel] = useState<string>("Processing…");
   const [activeTab, setActiveTab] = useState<TabId>("chapters");
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+
+  // Keep a ref to the uploaded video file for frame extraction later
+  const videoFileRef = useRef<File | null>(null);
+  // Track whether we've already kicked off thumbnail generation
+  const thumbGenStarted = useRef(false);
 
   const isJobActive = !!processJobId || !!thumbnailJobId;
 
   // ---------------------------------------------------------------------------
-  // Polling — one hook per job, independent
+  // Polling
   // ---------------------------------------------------------------------------
   const processGetter = useCallback(
     () => getProcessJob(processJobId!),
@@ -50,7 +62,7 @@ export default function Home() {
   } = usePolling<ProcessJobResponse>({
     getter: processGetter,
     enabled: !!processJobId,
-    intervalMs: 1000,
+    intervalMs: 2000, // 2s polling — transcription can take a while
     getStatus: (d) => d.status,
   });
 
@@ -60,12 +72,66 @@ export default function Home() {
   } = usePolling<ThumbnailJobResponse>({
     getter: thumbnailGetter,
     enabled: !!thumbnailJobId,
-    intervalMs: 1000,
+    intervalMs: 2000,
     getStatus: (d) => d.status,
   });
 
   // ---------------------------------------------------------------------------
-  // Submit handler — fires both jobs in parallel
+  // Auto-trigger thumbnail generation when process job completes
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (
+      processStatus !== "done" ||
+      !processResponse?.result ||
+      thumbGenStarted.current
+    ) {
+      return;
+    }
+
+    const result = processResponse.result;
+    const titles = result.titles;
+    const description = result.description;
+    const videoFile = videoFileRef.current;
+
+    if (!titles || titles.length === 0) return;
+
+    thumbGenStarted.current = true;
+
+    (async () => {
+      try {
+        let frames: string[];
+
+        if (videoFile) {
+          // Try to extract frames at chapter timestamps
+          const chapters = result.chapters;
+          if (chapters && chapters.length >= 3) {
+            const timestamps = chapters.slice(1, 4).map((c) => c.timestamp);
+            frames = await extractFramesAtTimestamps(videoFile, timestamps);
+          } else {
+            frames = await extractEvenlySpacedFrames(videoFile, 3);
+          }
+        } else {
+          // No video file (transcript-only) — skip thumbnail generation
+          console.log("No video file available for thumbnail generation");
+          return;
+        }
+
+        // Generate AI thumbnails
+        const thumbRes = await generateAIThumbnails({
+          titles,
+          description,
+          frames,
+        });
+
+        setThumbnailJobId(thumbRes.jobId);
+      } catch (err) {
+        console.error("Failed to generate thumbnails:", err);
+      }
+    })();
+  }, [processStatus, processResponse]);
+
+  // ---------------------------------------------------------------------------
+  // Submit handler
   // ---------------------------------------------------------------------------
   const handleSubmit = useCallback(
     async (input: { video?: File; transcript?: string }) => {
@@ -73,27 +139,30 @@ export default function Home() {
         ? input.video.name
         : `Transcript (${(input.transcript?.length ?? 0).toLocaleString()} chars)`;
       setActiveLabel(label);
+      setUploadProgress(0);
 
-      const [processRes, thumbnailRes] = await Promise.all([
-        startProcessJob(input),
-        startThumbnailJob({ video: input.video }),
-      ]);
+      // Store video file ref for later frame extraction
+      videoFileRef.current = input.video ?? null;
+      thumbGenStarted.current = false;
+
+      const processRes = await startProcessJob(input, (percent) => {
+        setUploadProgress(percent);
+      });
 
       setProcessJobId(processRes.jobId);
-      setThumbnailJobId(thumbnailRes.jobId);
     },
     []
   );
 
   // ---------------------------------------------------------------------------
-  // Overall header status — worst-case of both jobs
+  // Overall status
   // ---------------------------------------------------------------------------
   const overallStatus =
     processStatus === "error" || thumbnailStatus === "error"
       ? "error"
       : processStatus === "processing" || thumbnailStatus === "processing"
       ? "processing"
-      : processStatus === "done" && thumbnailStatus === "done"
+      : processStatus === "done" && (thumbnailStatus === "done" || !thumbnailJobId)
       ? "done"
       : processStatus === "pending" || thumbnailStatus === "pending"
       ? "pending"
@@ -139,7 +208,7 @@ export default function Home() {
   }
 
   // ---------------------------------------------------------------------------
-  // Landing state — UploadPanel fills the screen
+  // Landing state
   // ---------------------------------------------------------------------------
   if (!isJobActive) {
     return (
@@ -148,12 +217,13 @@ export default function Home() {
         isJobActive={false}
         activeLabel={undefined}
         activeStatus={null}
+        uploadProgress={uploadProgress}
       />
     );
   }
 
   // ---------------------------------------------------------------------------
-  // Active state — header + collapsed panel + tab rail + tab content
+  // Active state
   // ---------------------------------------------------------------------------
   return (
     <div
@@ -165,7 +235,7 @@ export default function Home() {
         background: "var(--bg)",
       }}
     >
-      {/* ── App header ── */}
+      {/* App header */}
       <header
         style={{
           display: "flex",
@@ -197,7 +267,6 @@ export default function Home() {
 
         <div style={{ flex: 1 }} />
 
-        {/* Active filename */}
         <span
           style={{
             fontFamily: "var(--font-mono)",
@@ -213,18 +282,19 @@ export default function Home() {
         </span>
       </header>
 
-      {/* ── Collapsed upload strip ── */}
+      {/* Collapsed upload strip */}
       <div style={{ flexShrink: 0 }}>
         <UploadPanel
           onSubmit={handleSubmit}
           isJobActive={true}
           activeLabel={activeLabel}
           activeStatus={overallStatus}
+          uploadProgress={uploadProgress}
         />
       </div>
 
 
-      {/* ── Main workspace: tab rail + content ── */}
+      {/* Main workspace: tab rail + content */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <TabRail
           activeTab={activeTab}
@@ -233,9 +303,8 @@ export default function Home() {
           thumbnailStatus={thumbnailStatus}
         />
 
-        {/* Tab content area */}
         <main
-          key={activeTab}  /* remount + re-animate on tab change */
+          key={activeTab}
           style={{
             flex: 1,
             overflow: "hidden",

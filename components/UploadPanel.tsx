@@ -8,6 +8,7 @@ interface UploadPanelProps {
   isJobActive: boolean;
   activeLabel?: string;
   activeStatus?: "pending" | "processing" | "done" | "error" | null;
+  uploadProgress?: number;
 }
 
 type InputMode = "video" | "transcript";
@@ -17,6 +18,7 @@ export default function UploadPanel({
   isJobActive,
   activeLabel,
   activeStatus,
+  uploadProgress = 0,
 }: UploadPanelProps) {
   const [mode, setMode] = useState<InputMode>("video");
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -66,7 +68,7 @@ export default function UploadPanel({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "10px",
+          gap: "12px",
           padding: "8px 16px",
           background: "var(--surface)",
           borderBottom: "1px solid var(--border)",
@@ -86,6 +88,46 @@ export default function UploadPanel({
         >
           {activeLabel ?? "Processing…"}
         </span>
+
+        {uploadProgress > 0 && uploadProgress < 100 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginLeft: "auto",
+            }}
+          >
+            <div
+              style={{
+                width: "120px",
+                height: "6px",
+                borderRadius: "3px",
+                background: "rgba(255, 255, 255, 0.1)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  width: `${uploadProgress}%`,
+                  height: "100%",
+                  background: "var(--accent-live)",
+                  transition: "width 200ms ease",
+                }}
+              />
+            </div>
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "11px",
+                color: "var(--accent-live)",
+                fontWeight: 600,
+              }}
+            >
+              Uploading {uploadProgress}%
+            </span>
+          </div>
+        )}
       </div>
     );
   }
@@ -169,7 +211,7 @@ export default function UploadPanel({
             maxWidth: "760px",
           }}
         >
-          Your YouTube Upload Copilot
+          Turn 20+ Minutes of Manual Upload Work into 1 Click
         </h1>
 
         <p
@@ -399,9 +441,10 @@ export default function UploadPanel({
                   padding: "14px",
                   borderRadius: "var(--radius-md)",
                   border: "none",
-                  background: canSubmit
+                  backgroundImage: canSubmit
                     ? "linear-gradient(135deg, #e8b342 0%, #d49e2d 50%, #5fb77e 100%)"
-                    : "var(--surface-raised)",
+                    : "none",
+                  backgroundColor: canSubmit ? "transparent" : "var(--surface-raised)",
                   backgroundSize: "200% 200%",
                   backgroundPosition: btnHover && canSubmit ? "100% 0%" : "0% 0%",
                   color: canSubmit ? "#101216" : "var(--text-muted)",

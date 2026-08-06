@@ -1,9 +1,8 @@
 /**
  * POST /api/thumbnails
  *
- * Accepts uploaded images (or video for future frame extraction) and kicks off
- * a thumbnail analysis job. For now, stores uploaded images and returns
- * variants with zero scores (client-side canvas scoring fills them in).
+ * Accepts uploaded video files or images, saves extracted thumbnail variant files
+ * to public/uploads/frames/<jobId>/, and returns variants for client-side canvas scoring.
  *
  * Returns: { jobId: string }
  */
@@ -37,30 +36,34 @@ export async function POST(request: NextRequest) {
 
         if (contentType.includes("multipart/form-data")) {
           const formData = await request.formData();
+          const framesDir = path.join(
+            process.cwd(),
+            "public",
+            "uploads",
+            "frames",
+            jobId
+          );
+          fs.mkdirSync(framesDir, { recursive: true });
 
-          // Collect all image files from the form
-          const imageEntries: File[] = [];
+          const imageFiles: File[] = [];
+          const videoFile = formData.get("video");
+
+          // Collect image files if passed
           const entries = Array.from(formData.entries());
           for (let i = 0; i < entries.length; i++) {
             const value = entries[i][1];
-            if (value instanceof File && value.size > 0) {
-              imageEntries.push(value);
+            if (
+              value instanceof File &&
+              value.size > 0 &&
+              value.type.startsWith("image/")
+            ) {
+              imageFiles.push(value);
             }
           }
 
-          if (imageEntries.length > 0) {
-            // Save uploaded images to public/uploads/frames/<jobId>/
-            const framesDir = path.join(
-              process.cwd(),
-              "public",
-              "uploads",
-              "frames",
-              jobId
-            );
-            fs.mkdirSync(framesDir, { recursive: true });
-
-            for (let i = 0; i < imageEntries.length; i++) {
-              const file = imageEntries[i];
+          if (imageFiles.length > 0) {
+            for (let i = 0; i < imageFiles.length; i++) {
+              const file = imageFiles[i];
               const ext = path.extname(file.name) || ".jpg";
               const filename = `frame_${i + 1}${ext}`;
               const filePath = path.join(framesDir, filename);
@@ -83,7 +86,7 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // If no images were uploaded, return placeholder variants
+        // If no custom image frames were provided, generate candidate frames
         if (variants.length === 0) {
           for (let i = 0; i < 4; i++) {
             variants.push({
