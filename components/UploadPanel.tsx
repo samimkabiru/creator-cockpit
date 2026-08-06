@@ -211,7 +211,7 @@ export default function UploadPanel({
             maxWidth: "760px",
           }}
         >
-          Turn 20+ Minutes of Manual Upload Work into 1 Click
+          Turn 2+ Hours of Manual Upload Work into 1 Click
         </h1>
 
         <p
