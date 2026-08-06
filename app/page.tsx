@@ -13,7 +13,6 @@ import HashtagsTab from "@/components/tabs/HashtagsTab";
 import PinnedCommentTab from "@/components/tabs/PinnedCommentTab";
 import TweetTab from "@/components/tabs/TweetTab";
 import ThumbnailsTab from "@/components/tabs/ThumbnailsTab";
-import ChecklistTab from "@/components/tabs/ChecklistTab";
 
 import {
   startProcessJob,
@@ -62,7 +61,7 @@ export default function Home() {
   } = usePolling<ProcessJobResponse>({
     getter: processGetter,
     enabled: !!processJobId,
-    intervalMs: 2000, // 2s polling — transcription can take a while
+    intervalMs: 2000,
     getStatus: (d) => d.status,
   });
 
@@ -102,21 +101,20 @@ export default function Home() {
         let frames: string[];
 
         if (videoFile) {
-          // Try to extract frames at chapter timestamps
+          // Extract 3-4 frames at chapter timestamps
           const chapters = result.chapters;
           if (chapters && chapters.length >= 3) {
-            const timestamps = chapters.slice(1, 4).map((c) => c.timestamp);
+            const timestamps = chapters.slice(0, 4).map((c) => c.timestamp);
             frames = await extractFramesAtTimestamps(videoFile, timestamps);
           } else {
-            frames = await extractEvenlySpacedFrames(videoFile, 3);
+            frames = await extractEvenlySpacedFrames(videoFile, 4);
           }
         } else {
-          // No video file (transcript-only) — skip thumbnail generation
           console.log("No video file available for thumbnail generation");
           return;
         }
 
-        // Generate AI thumbnails
+        // Generate AI thumbnails sequentially
         const thumbRes = await generateAIThumbnails({
           titles,
           description,
@@ -141,7 +139,6 @@ export default function Home() {
       setActiveLabel(label);
       setUploadProgress(0);
 
-      // Store video file ref for later frame extraction
       videoFileRef.current = input.video ?? null;
       thumbGenStarted.current = false;
 
@@ -172,7 +169,6 @@ export default function Home() {
   // Tab content renderer
   // ---------------------------------------------------------------------------
   const result = processResponse?.result;
-  const thumbResult = thumbnailResponse ?? undefined;
 
   function renderTab() {
     switch (activeTab) {
@@ -193,15 +189,6 @@ export default function Home() {
           <ThumbnailsTab
             status={thumbnailStatus}
             variants={thumbnailResponse?.variants}
-          />
-        );
-      case "checklist":
-        return (
-          <ChecklistTab
-            processStatus={processStatus}
-            thumbnailStatus={thumbnailStatus}
-            processResult={result}
-            thumbnailResult={thumbResult}
           />
         );
     }
@@ -292,7 +279,6 @@ export default function Home() {
           uploadProgress={uploadProgress}
         />
       </div>
-
 
       {/* Main workspace: tab rail + content */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>

@@ -1,9 +1,8 @@
-import { ProcessResult } from '@/types/api';
+import { ProcessResult } from "@/types/api";
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = "gemini-2.5-flash";
 
 function buildPrompt(transcript: string): string {
-  // Cap transcript to 20,000 chars
   const cappedTranscript = transcript.slice(0, 20000);
   
   return `You are an expert YouTube content strategist and metadata generator.
@@ -17,8 +16,7 @@ Generate a JSON object with the following structure based on the transcript:
   "hashtags": ["#string"], // 5-8 hashtags with # prefix
   "pinnedComment": "string", // Engaging pinned comment to drive interaction
   "tweet": "string", // Promotional tweet under 280 chars
-  "shorts": [{"start": "MM:SS", "end": "MM:SS", "reason": "string"}], // 2-4 candidates for shorts
-  "checklist": [{"item": "string", "status": "ok" | "warning" | "missing"}] // 8-12 quality check items
+  "shorts": [{"start": "MM:SS", "end": "MM:SS", "reason": "string"}] // 2-4 candidates for shorts
 }
 
 Transcript:
@@ -31,21 +29,21 @@ export async function generateContentFromTranscript(
 ): Promise<ProcessResult> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is missing from environment variables');
+    throw new Error("GEMINI_API_KEY is missing from environment variables");
   }
 
   const prompt = buildPrompt(transcriptText);
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
   const response = await fetch(url, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        responseMimeType: 'application/json',
+        responseMimeType: "application/json",
         temperature: 0.7,
       },
     }),
@@ -60,18 +58,17 @@ export async function generateContentFromTranscript(
   const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
   if (!textResponse) {
-    throw new Error('Invalid response structure from Gemini API: missing text content');
+    throw new Error("Invalid response structure from Gemini API: missing text content");
   }
 
-  // Strip markdown fences if present
   let cleanText = textResponse;
-  if (cleanText.startsWith('\`\`\`json')) {
+  if (cleanText.startsWith("```json")) {
     cleanText = cleanText.substring(7);
-  } else if (cleanText.startsWith('\`\`\`')) {
+  } else if (cleanText.startsWith("```")) {
     cleanText = cleanText.substring(3);
   }
   
-  if (cleanText.endsWith('\`\`\`')) {
+  if (cleanText.endsWith("```")) {
     cleanText = cleanText.substring(0, cleanText.length - 3);
   }
   

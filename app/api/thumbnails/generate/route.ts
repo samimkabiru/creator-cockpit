@@ -41,8 +41,7 @@ export async function POST(request: NextRequest) {
           breakdown: {
             contrast: 0,
             textDensity: 0,
-            edgeClutter: 0,
-            facePresence: 0
+            edgeClutter: 0
           }
         }));
 

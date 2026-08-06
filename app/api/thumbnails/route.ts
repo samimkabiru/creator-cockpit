@@ -79,7 +79,6 @@ export async function POST(request: NextRequest) {
                   contrast: 0,
                   textDensity: 0,
                   edgeClutter: 0,
-                  facePresence: 0,
                 },
               });
             }
@@ -97,7 +96,6 @@ export async function POST(request: NextRequest) {
                 contrast: 0,
                 textDensity: 0,
                 edgeClutter: 0,
-                facePresence: 0,
               },
             });
           }

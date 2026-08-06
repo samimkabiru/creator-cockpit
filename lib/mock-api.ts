@@ -136,19 +136,6 @@ Full review (32 min, timestamped) → [link]`,
         "Live Translate demo with Japanese audio — impressive feature showcase, clear hook and payoff under 60 seconds",
     },
   ],
-
-  checklist: [
-    { item: "Title — 3 variants written", status: "ok" },
-    { item: "Description — written and includes chapters", status: "ok" },
-    { item: "Hashtags — 5–8 relevant tags", status: "ok" },
-    { item: "Chapters — timestamped and labeled", status: "ok" },
-    { item: "Pinned comment — ready to paste", status: "ok" },
-    { item: "Tweet — written and under 280 chars", status: "ok" },
-    { item: "Shorts candidates — identified", status: "ok" },
-    { item: "Thumbnail — reviewed and scored", status: "warning" },
-    { item: "End screen — configured in YouTube Studio", status: "missing" },
-    { item: "Cards — added at relevant timestamps", status: "missing" },
-  ],
 };
 
 // ---------------------------------------------------------------------------
@@ -164,7 +151,6 @@ const MOCK_THUMBNAIL_VARIANTS: ThumbnailVariant[] = [
       contrast: 88,
       textDensity: 74,
       edgeClutter: 72,
-      facePresence: 90,
     },
   },
   {
@@ -175,7 +161,6 @@ const MOCK_THUMBNAIL_VARIANTS: ThumbnailVariant[] = [
       contrast: 55,
       textDensity: 80,
       edgeClutter: 60,
-      facePresence: 58,
     },
   },
   {
@@ -186,7 +171,6 @@ const MOCK_THUMBNAIL_VARIANTS: ThumbnailVariant[] = [
       contrast: 42,
       textDensity: 65,
       edgeClutter: 38,
-      facePresence: 47,
     },
   },
   {
@@ -197,7 +181,6 @@ const MOCK_THUMBNAIL_VARIANTS: ThumbnailVariant[] = [
       contrast: 30,
       textDensity: 20,
       edgeClutter: 28,
-      facePresence: 45,
     },
   },
 ];

@@ -11,11 +11,6 @@ export interface ShortCandidate {
   reason: string;
 }
 
-export interface ChecklistItem {
-  item: string;
-  status: "ok" | "warning" | "missing";
-}
-
 export interface ProcessResult {
   chapters: Chapter[];
   titles: string[]; // exactly 3
@@ -24,7 +19,6 @@ export interface ProcessResult {
   pinnedComment: string;
   tweet: string;
   shorts: ShortCandidate[];
-  checklist: ChecklistItem[];
 }
 
 export interface ProcessJobResponse {
@@ -36,8 +30,7 @@ export interface ProcessJobResponse {
 export interface ThumbnailBreakdown {
   contrast: number;     // 0-100
   textDensity: number;  // 0-100
-  edgeClutter: number;  // 0-100
-  facePresence: number; // 0-100
+  edgeClutter: number;  // 0-100 (Visual Simplicity)
 }
 
 export interface ThumbnailVariant {
