@@ -14,7 +14,7 @@ import { scoreEdgeClutter } from "./edgeClutter";
 export interface ImageScoreResult {
   contrast: number;         // 0-100
   textDensity: number;      // 0-100
-  visualSimplicity: number; // 0-100 (100 = clean, uncluttered design)
+  edgeClutter: number;      // 0-100 (100 = clean, uncluttered design)
   composite: number;        // 0-100 weighted average
 }
 
@@ -47,17 +47,17 @@ export async function scoreThumbnailImageFromUrl(
         const textDensity = scoreTextDensity(totalArea * 0.2, totalArea);
 
         // 3. Visual Simplicity score (Sobel convolution: lower noise = higher simplicity score)
-        const visualSimplicity = scoreEdgeClutter(ctx, 0, 0, canvas.width, canvas.height);
+        const edgeClutter = scoreEdgeClutter(ctx, 0, 0, canvas.width, canvas.height);
 
         // Composite: 40% Contrast, 30% Text Density, 30% Visual Simplicity
         const composite = Math.round(
-          contrast * 0.4 + textDensity * 0.3 + visualSimplicity * 0.3
+          contrast * 0.4 + textDensity * 0.3 + edgeClutter * 0.3
         );
 
         resolve({
           contrast: Math.min(100, Math.max(10, contrast || 75)),
           textDensity: Math.min(100, Math.max(10, textDensity || 80)),
-          visualSimplicity,
+          edgeClutter,
           composite: Math.min(100, Math.max(20, composite)),
         });
       } catch (err) {
@@ -78,7 +78,7 @@ function getFallbackScore(): ImageScoreResult {
   return {
     contrast: 82,
     textDensity: 78,
-    visualSimplicity: 85,
+    edgeClutter: 85,
     composite: 82,
   };
 }
