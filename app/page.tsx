@@ -35,6 +35,7 @@ export default function Home() {
   const [activeLabel, setActiveLabel] = useState<string>("Processing…");
   const [activeTab, setActiveTab] = useState<TabId>("chapters");
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [thumbnailSkipReason, setThumbnailSkipReason] = useState<string | null>(null);
 
   // Keep a ref to the uploaded video file for frame extraction later
   const videoFileRef = useRef<File | null>(null);
@@ -93,7 +94,10 @@ export default function Home() {
     const description = result.description;
     const videoFile = videoFileRef.current;
 
-    if (!titles || titles.length === 0) return;
+    if (!titles || titles.length === 0) {
+      setThumbnailSkipReason("Waiting on generated titles before thumbnails can be created.");
+      return;
+    }
 
     thumbGenStarted.current = true;
 
@@ -111,7 +115,9 @@ export default function Home() {
             frames = await extractEvenlySpacedFrames(videoFile, 4);
           }
         } else {
-          console.log("No video file available for thumbnail generation");
+          setThumbnailSkipReason(
+            "Thumbnail generation needs a video upload — it\u2019s not available for transcript-only submissions."
+          );
           return;
         }
 
@@ -124,6 +130,10 @@ export default function Home() {
 
         setThumbnailJobId(thumbRes.jobId);
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setThumbnailSkipReason(
+          `Thumbnail generation failed — check your Qwen/DashScope API key and try again. (${msg})`
+        );
         console.error("Failed to generate thumbnails:", err);
       }
     })();
@@ -139,6 +149,7 @@ export default function Home() {
         : `Transcript (${(input.transcript?.length ?? 0).toLocaleString()} chars)`;
       setActiveLabel(label);
       setUploadProgress(0);
+      setThumbnailSkipReason(null);
 
       videoFileRef.current = input.video ?? null;
       thumbGenStarted.current = false;
@@ -190,6 +201,7 @@ export default function Home() {
           <ThumbnailsTab
             status={thumbnailStatus}
             variants={thumbnailResponse?.variants}
+            skipReason={thumbnailSkipReason}
           />
         );
       case "checklist":
