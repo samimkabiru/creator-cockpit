@@ -9,9 +9,10 @@ import { scoreThumbnailImageFromUrl, type ImageScoreResult } from "@/lib/scoring
 interface ThumbnailsTabProps {
   status: JobStatus | null;
   variants: ThumbnailVariant[] | undefined;
+  skipReason?: string | null;
 }
 
-export default function ThumbnailsTab({ status, variants }: ThumbnailsTabProps) {
+export default function ThumbnailsTab({ status, variants, skipReason }: ThumbnailsTabProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [liveScores, setLiveScores] = useState<Record<string, ImageScoreResult>>({});
 
@@ -61,7 +62,25 @@ export default function ThumbnailsTab({ status, variants }: ThumbnailsTabProps) 
           Thumbnail variants couldn&apos;t be generated.
         </div>
       ) : !variants?.length ? (
-        <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>No thumbnail variants yet.</p>
+        skipReason ? (
+          // Info-box — same pattern as ChecklistTab's "backend field not ready" notice
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: "var(--radius-md)",
+              border: "1px solid var(--border)",
+              background: "var(--surface-raised)",
+              fontSize: "13px",
+              color: "var(--text-muted)",
+              lineHeight: 1.6,
+            }}
+          >
+            <span style={{ marginRight: "8px" }}>ℹ</span>
+            {skipReason}
+          </div>
+        ) : (
+          <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>No thumbnail variants yet.</p>
+        )
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           {/* Variant grid */}
