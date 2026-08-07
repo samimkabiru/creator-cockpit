@@ -8,6 +8,7 @@
 
 import fs from "fs";
 import path from "path";
+import os from "os";
 
 const QWEN_MODEL = "wan2.7-image-pro";
 
@@ -137,8 +138,9 @@ export async function generateAndSaveThumbnails(
   description: string,
   jobId: string
 ): Promise<Array<{ id: string; imageUrl: string }>> {
-  const publicDir = path.join(process.cwd(), "public", "uploads", "thumbs", jobId);
-  fs.mkdirSync(publicDir, { recursive: true });
+  // Save to os.tmpdir() to avoid Next.js public/ caching issues AND keep RAM low
+  const thumbDir = path.join(os.tmpdir(), "creator_cockpit_thumbs", jobId);
+  fs.mkdirSync(thumbDir, { recursive: true });
 
   const results: Array<{ id: string; imageUrl: string }> = [];
   const count = Math.min(titles.length, 3);
@@ -151,17 +153,15 @@ export async function generateAndSaveThumbnails(
     try {
       const buffer = await generateSingleThumbnail(frames, title, description);
       const filename = `thumb_${i + 1}.jpg`;
-      const filePath = path.join(publicDir, filename);
-
-      const base64Data = buffer.toString("base64");
-      const dataUrl = `data:image/jpeg;base64,${base64Data}`;
+      const filePath = path.join(thumbDir, filename);
 
       fs.writeFileSync(filePath, buffer);
       console.log(`[Sequential ${i + 1}/${count}] Successfully saved thumbnail to ${filePath}`);
 
+      // Serve via streaming API route (no base64 in memory)
       results.push({
         id: `variant_${i + 1}`,
-        imageUrl: dataUrl,
+        imageUrl: `/api/thumbnails/image/${jobId}/${filename}`,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
