@@ -24,7 +24,7 @@ export interface ProcessResult {
   pinnedComment: string;
   tweet: string;
   shorts: ShortCandidate[];
-  checklist?: ChecklistItem[]; // optional until backend prompt is updated
+  checklist?: ChecklistItem[];
 }
 
 export interface ProcessJobResponse {
@@ -49,4 +49,5 @@ export interface ThumbnailVariant {
 export interface ThumbnailJobResponse {
   status: JobStatus;
   variants?: ThumbnailVariant[];
+  error?: string;
 }

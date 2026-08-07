@@ -16,7 +16,8 @@ Generate a JSON object with the following structure based on the transcript:
   "hashtags": ["#string"], // 5-8 hashtags with # prefix
   "pinnedComment": "string", // Engaging pinned comment to drive interaction
   "tweet": "string", // Promotional tweet under 280 chars
-  "shorts": [{"start": "MM:SS", "end": "MM:SS", "reason": "string"}] // 2-4 candidates for shorts
+  "shorts": [{"start": "MM:SS", "end": "MM:SS", "reason": "string"}], // 2-4 candidates for shorts
+  "checklist": [{"item": "string", "status": "ok"}] // 6-10 publication quality check items
 }
 
 Transcript:
