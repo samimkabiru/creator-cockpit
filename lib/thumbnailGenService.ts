@@ -153,12 +153,15 @@ export async function generateAndSaveThumbnails(
       const filename = `thumb_${i + 1}.jpg`;
       const filePath = path.join(publicDir, filename);
 
+      const base64Data = buffer.toString("base64");
+      const dataUrl = `data:image/jpeg;base64,${base64Data}`;
+
       fs.writeFileSync(filePath, buffer);
       console.log(`[Sequential ${i + 1}/${count}] Successfully saved thumbnail to ${filePath}`);
 
       results.push({
         id: `variant_${i + 1}`,
-        imageUrl: `/uploads/thumbs/${jobId}/${filename}`,
+        imageUrl: dataUrl,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

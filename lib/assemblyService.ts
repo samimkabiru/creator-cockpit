@@ -98,18 +98,18 @@ export async function transcribeVideo(videoInput: File | Buffer): Promise<{
     const finalData = await pollTranscriptJob(transcriptId, apiKey);
     console.log(`AssemblyAI transcription completed! Duration: ${finalData.audio_duration || 0}s`);
 
-    // 6. Format words into 15-second [MM:SS] timestamp buckets for LLM
+    // 6. Format words into 60-second [MM:SS] timestamp buckets for LLM
     const words = finalData.words || [];
     let timestampedTranscript = "";
     let currentBucket = -1;
 
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
-      const bucket = Math.floor(word.start / 15000); // 15-second intervals
+      const bucket = Math.floor(word.start / 60000); // 60-second intervals (1 minute)
 
       if (bucket > currentBucket) {
         currentBucket = bucket;
-        const totalSeconds = currentBucket * 15;
+        const totalSeconds = currentBucket * 60;
         const minutes = Math.floor(totalSeconds / 60);
         const seconds = totalSeconds % 60;
         const timeStr = `[${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}]`;
