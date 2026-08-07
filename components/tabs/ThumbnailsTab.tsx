@@ -10,9 +10,10 @@ interface ThumbnailsTabProps {
   status: JobStatus | null;
   variants: ThumbnailVariant[] | undefined;
   skipReason?: string | null;
+  errorMessage?: string;
 }
 
-export default function ThumbnailsTab({ status, variants, skipReason }: ThumbnailsTabProps) {
+export default function ThumbnailsTab({ status, variants, skipReason, errorMessage }: ThumbnailsTabProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [liveScores, setLiveScores] = useState<Record<string, ImageScoreResult>>({});
 
@@ -59,7 +60,7 @@ export default function ThumbnailsTab({ status, variants, skipReason }: Thumbnai
         <ThumbnailSkeleton />
       ) : status === "error" ? (
         <div style={{ padding: "16px", borderRadius: "var(--radius-md)", border: "1px solid var(--accent-bad)", background: "rgba(217,83,79,0.06)", color: "var(--accent-bad)", fontSize: "13px" }}>
-          Thumbnail variants couldn&apos;t be generated.
+          {errorMessage ?? "Thumbnail variants couldn\u2019t be generated."}
         </div>
       ) : !variants?.length ? (
         skipReason ? (

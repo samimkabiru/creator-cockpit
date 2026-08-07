@@ -228,6 +228,16 @@ export default function Home() {
             status={isUploading ? "processing" : thumbnailStatus}
             variants={thumbnailResponse?.variants}
             skipReason={thumbnailSkipReason ?? undefined}
+            errorMessage={thumbnailResponse?.error}
+          />
+        );
+      case "checklist":
+        return (
+          <ChecklistTab
+            processStatus={isUploading ? "processing" : processStatus}
+            thumbnailStatus={isUploading ? "processing" : thumbnailStatus}
+            processResult={result}
+            thumbnailResult={thumbnailResponse ?? undefined}
           />
         );
       case "checklist":
