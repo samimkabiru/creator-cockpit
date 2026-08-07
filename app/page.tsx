@@ -14,6 +14,7 @@ import HashtagsTab from "@/components/tabs/HashtagsTab";
 import PinnedCommentTab from "@/components/tabs/PinnedCommentTab";
 import TweetTab from "@/components/tabs/TweetTab";
 import ThumbnailsTab from "@/components/tabs/ThumbnailsTab";
+import ShortsTab from "@/components/tabs/ShortsTab";
 import ChecklistTab from "@/components/tabs/ChecklistTab";
 
 import {
@@ -231,13 +232,12 @@ export default function Home() {
             errorMessage={thumbnailResponse?.error}
           />
         );
-      case "checklist":
+      case "shorts":
         return (
-          <ChecklistTab
-            processStatus={isUploading ? "processing" : processStatus}
-            thumbnailStatus={isUploading ? "processing" : thumbnailStatus}
-            processResult={result}
-            thumbnailResult={thumbnailResponse ?? undefined}
+          <ShortsTab
+            status={isUploading ? "processing" : processStatus}
+            shorts={result?.shorts}
+            videoFile={videoFileRef.current}
           />
         );
       case "checklist":

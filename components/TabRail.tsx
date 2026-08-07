@@ -11,6 +11,7 @@ export type TabId =
   | "pinned-comment"
   | "tweet"
   | "thumbnails"
+  | "shorts"
   | "checklist";
 
 export interface TabDef {
@@ -35,6 +36,7 @@ export const TABS: TabDef[] = [
   { id: "pinned-comment",label: "Pinned Comment",  icon: <PinIcon />,       jobSource: "process" },
   { id: "tweet",         label: "Tweet",           icon: <TweetIcon />,     jobSource: "process" },
   { id: "thumbnails",    label: "Thumbnails",      icon: <ThumbIcon />,     jobSource: "thumbnail" },
+  { id: "shorts",        label: "Shorts",          icon: <ShortsIcon />,    jobSource: "process" },
   { id: "checklist",     label: "Checklist",       icon: <ChecklistIcon />, jobSource: "process" },
 ];
 
@@ -175,6 +177,14 @@ function ThumbIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+    </svg>
+  );
+}
+
+function ShortsIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
     </svg>
   );
 }

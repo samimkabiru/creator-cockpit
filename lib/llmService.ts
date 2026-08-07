@@ -34,6 +34,12 @@ LABEL RULES:
 - Avoid: "Intro," "Continuation," "More on this," "Part 2," "Chapter 1," or restating the video title.
 - Write it as a viewer would search for that moment, not as a transcript summary.
 
+SHORTS CANDIDATE SELECTION RULES:
+- Identify 2 to 4 distinct segments from the transcript that are ideal for viral YouTube Shorts, TikToks, or Instagram Reels.
+- Duration: Each short candidate MUST be under 60 seconds (ideally 30–55 seconds). Calculate difference between end and start timestamps.
+- Content: Focus on high-energy hooks, dramatic reveals, key step-by-step demonstrations, or emotional payoffs that are self-contained.
+- Start and End timestamps MUST be exact [MM:SS] markers present in the transcript.
+
 Generate a JSON object with the following structure based on the transcript:
 {
   "chapters": [{"timestamp": "0:00", "label": "string"}], // Apply the CHAPTER DETECTION METHOD above. Do not space chapters evenly or by fixed intervals.
@@ -42,7 +48,7 @@ Generate a JSON object with the following structure based on the transcript:
   "hashtags": ["#string"], // 5-8 hashtags with # prefix
   "pinnedComment": "string", // Engaging pinned comment to drive interaction
   "tweet": "string", // Promotional tweet under 280 chars
-  "shorts": [{"start": "MM:SS", "end": "MM:SS", "reason": "string"}], // 2-4 candidates for shorts
+  "shorts": [{"start": "MM:SS", "end": "MM:SS", "reason": "string"}], // 2-4 candidates under 60 seconds matching SHORTS CANDIDATE SELECTION RULES
   "checklist": [{"item": "string", "status": "ok"}] // 6-10 publication quality check items
 }
 
