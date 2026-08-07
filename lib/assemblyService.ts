@@ -70,19 +70,23 @@ export async function transcribeVideo(videoInput: File | Buffer): Promise<{
       await pipeline(nodeStream, writeStream);
     }
 
-    // 2. Extract audio track to MP3 using ffmpeg-static
-    console.log("Extracting audio track from video file via ffmpeg...");
-    await extractAudioFromVideo(inputVideoPath, outputAudioPath);
+    // Check if input is already an audio file (e.g. browser-extracted 16kHz WAV)
+    const isAudio = typeof videoInput === "object" && videoInput !== null && "name" in videoInput && (
+      (videoInput as File).type.startsWith("audio/") ||
+      (videoInput as File).name.endsWith(".wav") ||
+      (videoInput as File).name.endsWith(".mp3")
+    );
 
-    // Immediately remove raw video file to free disk/RAM
-    try {
-      if (fs.existsSync(inputVideoPath)) fs.unlinkSync(inputVideoPath);
-    } catch {
-      // ignore
+    let audioBuffer: Buffer;
+    if (isAudio) {
+      console.log("Input is already a browser-extracted audio file — skipping ffmpeg server extraction.");
+      audioBuffer = fs.readFileSync(inputVideoPath);
+    } else {
+      console.log("Extracting audio track from video file via ffmpeg...");
+      await extractAudioFromVideo(inputVideoPath, outputAudioPath);
+      audioBuffer = fs.readFileSync(outputAudioPath);
     }
-
-    const audioBuffer = fs.readFileSync(outputAudioPath);
-    console.log(`Audio extraction complete! MP3 size: ${(audioBuffer.length / 1024 / 1024).toFixed(1)} MB`);
+    console.log(`Audio ready! Payload size: ${(audioBuffer.length / 1024 / 1024).toFixed(1)} MB`);
 
     // 3. Upload raw audio buffer to AssemblyAI
     console.log("Uploading MP3 audio buffer to AssemblyAI...");
