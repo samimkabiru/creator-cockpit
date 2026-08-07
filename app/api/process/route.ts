@@ -31,8 +31,7 @@ export async function POST(req: NextRequest) {
       updateProcessJob(jobId, { status: 'processing' });
 
       if (video) {
-        const videoBuffer = Buffer.from(await video.arrayBuffer());
-        const { timestampedTranscript, durationSeconds } = await transcribeVideo(videoBuffer);
+        const { timestampedTranscript, durationSeconds } = await transcribeVideo(video);
         console.log('Transcription complete:', durationSeconds, 'seconds');
         
         const result = await generateContentFromTranscript(timestampedTranscript);

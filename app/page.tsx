@@ -154,11 +154,22 @@ export default function Home() {
       videoFileRef.current = input.video ?? null;
       thumbGenStarted.current = false;
 
-      const processRes = await startProcessJob(input, (percent) => {
-        setUploadProgress(percent);
-      });
+      // Set temporary jobId immediately to trigger UI workspace view & progress bar
+      const tempId = `proc_uploading_${Date.now()}`;
+      setProcessJobId(tempId);
 
-      setProcessJobId(processRes.jobId);
+      try {
+        const processRes = await startProcessJob(input, (percent) => {
+          setUploadProgress(percent);
+        });
+
+        // Replace with real job ID from server
+        setProcessJobId(processRes.jobId);
+      } catch (err: unknown) {
+        setProcessJobId(null);
+        const msg = err instanceof Error ? err.message : String(err);
+        alert(`Upload failed: ${msg}`);
+      }
     },
     []
   );

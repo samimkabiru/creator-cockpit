@@ -1,12 +1,17 @@
 /**
  * assemblyService.ts — Transcribes video files by extracting their audio track via ffmpeg-static
  * and sending the lightweight audio file to AssemblyAI.
+ *
+ * Uses low-memory streaming (stream to disk) to prevent Out-Of-Memory (OOM) crashes
+ * on memory-constrained environments like Render Free (512MB RAM).
  */
 
 import https from "https";
 import fs from "fs";
 import path from "path";
 import os from "os";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
 import ffmpegPath from "ffmpeg-static";
 import ffmpeg from "fluent-ffmpeg";
 
@@ -38,7 +43,7 @@ interface AssemblyAITranscriptResponse {
   words?: Array<{ text: string; start: number; end: number; confidence: number }>;
 }
 
-export async function transcribeVideo(fileBuffer: Buffer): Promise<{
+export async function transcribeVideo(videoInput: File | Buffer): Promise<{
   timestampedTranscript: string;
   rawText: string;
   durationSeconds: number;
@@ -54,13 +59,27 @@ export async function transcribeVideo(fileBuffer: Buffer): Promise<{
   const outputAudioPath = path.join(tempDir, `audio_${tempId}.mp3`);
 
   try {
-    // 1. Write incoming video buffer to temp file
-    console.log(`Writing ${(fileBuffer.length / 1024 / 1024).toFixed(1)} MB video buffer to temporary file...`);
-    fs.writeFileSync(inputVideoPath, fileBuffer);
+    // 1. Write incoming video stream directly to temp disk file (low RAM overhead)
+    if (Buffer.isBuffer(videoInput)) {
+      console.log(`Writing ${(videoInput.length / 1024 / 1024).toFixed(1)} MB video buffer to disk...`);
+      fs.writeFileSync(inputVideoPath, videoInput);
+    } else {
+      console.log(`Streaming ${(videoInput.size / 1024 / 1024).toFixed(1)} MB video File directly to disk...`);
+      const nodeStream = Readable.fromWeb(videoInput.stream() as unknown as import("stream/web").ReadableStream);
+      const writeStream = fs.createWriteStream(inputVideoPath);
+      await pipeline(nodeStream, writeStream);
+    }
 
     // 2. Extract audio track to MP3 using ffmpeg-static
     console.log("Extracting audio track from video file via ffmpeg...");
     await extractAudioFromVideo(inputVideoPath, outputAudioPath);
+
+    // Immediately remove raw video file to free disk/RAM
+    try {
+      if (fs.existsSync(inputVideoPath)) fs.unlinkSync(inputVideoPath);
+    } catch {
+      // ignore
+    }
 
     const audioBuffer = fs.readFileSync(outputAudioPath);
     console.log(`Audio extraction complete! MP3 size: ${(audioBuffer.length / 1024 / 1024).toFixed(1)} MB`);
@@ -114,8 +133,8 @@ export async function transcribeVideo(fileBuffer: Buffer): Promise<{
     try {
       if (fs.existsSync(inputVideoPath)) fs.unlinkSync(inputVideoPath);
       if (fs.existsSync(outputAudioPath)) fs.unlinkSync(outputAudioPath);
-    } catch (cleanupErr) {
-      console.warn("Temporary file cleanup warning:", cleanupErr);
+    } catch {
+      // ignore
     }
   }
 }
@@ -164,7 +183,7 @@ function uploadBufferToAssemblyAI(fileBuffer: Buffer, apiKey: string): Promise<s
               } else {
                 reject(new Error("AssemblyAI upload succeeded but no upload_url returned: " + responseText));
               }
-            } catch (err) {
+            } catch {
               reject(new Error("Invalid JSON from AssemblyAI upload: " + responseText));
             }
           } else {
@@ -210,7 +229,7 @@ function submitTranscriptJob(audioUrl: string, apiKey: string): Promise<string> 
               } else {
                 reject(new Error("No transcript ID returned: " + responseText));
               }
-            } catch (err) {
+            } catch {
               reject(new Error("Invalid JSON from AssemblyAI transcript submit: " + responseText));
             }
           } else {
@@ -262,7 +281,7 @@ function getTranscriptStatus(transcriptId: string, apiKey: string): Promise<Asse
             try {
               const json = JSON.parse(responseText);
               resolve(json);
-            } catch (err) {
+            } catch {
               reject(new Error("Invalid JSON polling transcript status: " + responseText));
             }
           } else {
