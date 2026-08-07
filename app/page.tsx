@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import UploadPanel from "@/components/UploadPanel";
+import UploadProgressModal from "@/components/UploadProgressModal";
 import TabRail, { type TabId } from "@/components/TabRail";
 import StatusLight from "@/components/StatusLight";
 
@@ -13,7 +14,6 @@ import HashtagsTab from "@/components/tabs/HashtagsTab";
 import PinnedCommentTab from "@/components/tabs/PinnedCommentTab";
 import TweetTab from "@/components/tabs/TweetTab";
 import ThumbnailsTab from "@/components/tabs/ThumbnailsTab";
-import ChecklistTab from "@/components/tabs/ChecklistTab";
 
 import {
   startProcessJob,
@@ -23,6 +23,7 @@ import {
 } from "@/lib/api";
 import { usePolling } from "@/lib/usePolling";
 import { extractFramesAtTimestamps, extractEvenlySpacedFrames } from "@/lib/frameExtractor";
+import { extractAudioInBrowser } from "@/lib/browserAudioExtractor";
 
 import type { ProcessJobResponse, ThumbnailJobResponse } from "@/types/api";
 
@@ -35,6 +36,9 @@ export default function Home() {
   const [activeLabel, setActiveLabel] = useState<string>("Processing…");
   const [activeTab, setActiveTab] = useState<TabId>("chapters");
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadFileName, setUploadFileName] = useState<string>("");
+  const [uploadFileSizeMb, setUploadFileSizeMb] = useState<string>("");
   const [thumbnailSkipReason, setThumbnailSkipReason] = useState<string | null>(null);
 
   // Keep a ref to the uploaded video file for frame extraction later
@@ -42,10 +46,10 @@ export default function Home() {
   // Track whether we've already kicked off thumbnail generation
   const thumbGenStarted = useRef(false);
 
-  const isJobActive = !!processJobId || !!thumbnailJobId;
+  const isJobActive = !!processJobId || !!thumbnailJobId || isUploading;
 
   // ---------------------------------------------------------------------------
-  // Polling
+  // Polling — only poll valid job IDs (not uploading state)
   // ---------------------------------------------------------------------------
   const processGetter = useCallback(
     () => getProcessJob(processJobId!),
@@ -62,7 +66,7 @@ export default function Home() {
     status: processStatus,
   } = usePolling<ProcessJobResponse>({
     getter: processGetter,
-    enabled: !!processJobId,
+    enabled: !!processJobId && !processJobId.startsWith("proc_uploading"),
     intervalMs: 2000,
     getStatus: (d) => d.status,
   });
@@ -94,10 +98,7 @@ export default function Home() {
     const description = result.description;
     const videoFile = videoFileRef.current;
 
-    if (!titles || titles.length === 0) {
-      setThumbnailSkipReason("Waiting on generated titles before thumbnails can be created.");
-      return;
-    }
+    if (!titles || titles.length === 0) return;
 
     thumbGenStarted.current = true;
 
@@ -115,9 +116,8 @@ export default function Home() {
             frames = await extractEvenlySpacedFrames(videoFile, 4);
           }
         } else {
-          setThumbnailSkipReason(
-            "Thumbnail generation needs a video upload — it\u2019s not available for transcript-only submissions."
-          );
+          console.log("No video file available for thumbnail generation");
+          setThumbnailSkipReason("No video file provided (transcript-only mode).");
           return;
         }
 
@@ -154,18 +154,31 @@ export default function Home() {
       videoFileRef.current = input.video ?? null;
       thumbGenStarted.current = false;
 
-      // Set temporary jobId immediately to trigger UI workspace view & progress bar
-      const tempId = `proc_uploading_${Date.now()}`;
-      setProcessJobId(tempId);
+      if (input.video) {
+        setIsUploading(true);
+        setUploadFileName(input.video.name);
+        setUploadFileSizeMb((input.video.size / 1024 / 1024).toFixed(1));
+      }
 
       try {
-        const processRes = await startProcessJob(input, (percent) => {
-          setUploadProgress(percent);
-        });
+        let fileToUpload: File | undefined = input.video;
+        if (input.video) {
+          // Extract lightweight audio in browser to shrink ~120MB video down to ~2.5MB audio
+          fileToUpload = await extractAudioInBrowser(input.video);
+        }
 
-        // Replace with real job ID from server
+        const processRes = await startProcessJob(
+          { video: fileToUpload, transcript: input.transcript },
+          (percent) => {
+            setUploadProgress(percent);
+          }
+        );
+
+        // Upload complete — set real job ID and turn off upload modal
         setProcessJobId(processRes.jobId);
+        setIsUploading(false);
       } catch (err: unknown) {
+        setIsUploading(false);
         setProcessJobId(null);
         const msg = err instanceof Error ? err.message : String(err);
         alert(`Upload failed: ${msg}`);
@@ -177,16 +190,17 @@ export default function Home() {
   // ---------------------------------------------------------------------------
   // Overall status
   // ---------------------------------------------------------------------------
-  const overallStatus =
-    processStatus === "error" || thumbnailStatus === "error"
-      ? "error"
-      : processStatus === "processing" || thumbnailStatus === "processing"
-      ? "processing"
-      : processStatus === "done" && (thumbnailStatus === "done" || !thumbnailJobId)
-      ? "done"
-      : processStatus === "pending" || thumbnailStatus === "pending"
-      ? "pending"
-      : null;
+  const overallStatus = isUploading
+    ? "processing"
+    : processStatus === "error" || thumbnailStatus === "error"
+    ? "error"
+    : processStatus === "processing" || thumbnailStatus === "processing"
+    ? "processing"
+    : processStatus === "done" && (thumbnailStatus === "done" || !thumbnailJobId)
+    ? "done"
+    : processStatus === "pending" || thumbnailStatus === "pending"
+    ? "pending"
+    : null;
 
   // ---------------------------------------------------------------------------
   // Tab content renderer
@@ -196,32 +210,23 @@ export default function Home() {
   function renderTab() {
     switch (activeTab) {
       case "chapters":
-        return <ChaptersTab status={processStatus} chapters={result?.chapters} />;
+        return <ChaptersTab status={isUploading ? "processing" : processStatus} chapters={result?.chapters} />;
       case "titles":
-        return <TitlesTab status={processStatus} titles={result?.titles} />;
+        return <TitlesTab status={isUploading ? "processing" : processStatus} titles={result?.titles} />;
       case "description":
-        return <DescriptionTab status={processStatus} description={result?.description} />;
+        return <DescriptionTab status={isUploading ? "processing" : processStatus} description={result?.description} />;
       case "hashtags":
-        return <HashtagsTab status={processStatus} hashtags={result?.hashtags} />;
+        return <HashtagsTab status={isUploading ? "processing" : processStatus} hashtags={result?.hashtags} />;
       case "pinned-comment":
-        return <PinnedCommentTab status={processStatus} pinnedComment={result?.pinnedComment} />;
+        return <PinnedCommentTab status={isUploading ? "processing" : processStatus} pinnedComment={result?.pinnedComment} />;
       case "tweet":
-        return <TweetTab status={processStatus} tweet={result?.tweet} />;
+        return <TweetTab status={isUploading ? "processing" : processStatus} tweet={result?.tweet} />;
       case "thumbnails":
         return (
           <ThumbnailsTab
-            status={thumbnailStatus}
+            status={isUploading ? "processing" : thumbnailStatus}
             variants={thumbnailResponse?.variants}
-            skipReason={thumbnailSkipReason}
-          />
-        );
-      case "checklist":
-        return (
-          <ChecklistTab
-            processStatus={processStatus}
-            thumbnailStatus={thumbnailStatus}
-            processResult={result}
-            thumbnailResult={thumbnailResponse ?? undefined}
+            skipReason={thumbnailSkipReason ?? undefined}
           />
         );
     }
@@ -232,13 +237,21 @@ export default function Home() {
   // ---------------------------------------------------------------------------
   if (!isJobActive) {
     return (
-      <UploadPanel
-        onSubmit={handleSubmit}
-        isJobActive={false}
-        activeLabel={undefined}
-        activeStatus={null}
-        uploadProgress={uploadProgress}
-      />
+      <>
+        <UploadProgressModal
+          isOpen={isUploading}
+          fileName={uploadFileName}
+          fileSizeMb={uploadFileSizeMb}
+          progress={uploadProgress}
+        />
+        <UploadPanel
+          onSubmit={handleSubmit}
+          isJobActive={false}
+          activeLabel={undefined}
+          activeStatus={null}
+          uploadProgress={uploadProgress}
+        />
+      </>
     );
   }
 
@@ -255,6 +268,14 @@ export default function Home() {
         background: "var(--bg)",
       }}
     >
+      {/* Upload progress modal overlay */}
+      <UploadProgressModal
+        isOpen={isUploading}
+        fileName={uploadFileName}
+        fileSizeMb={uploadFileSizeMb}
+        progress={uploadProgress}
+      />
+
       {/* App header */}
       <header
         style={{
@@ -318,8 +339,8 @@ export default function Home() {
         <TabRail
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          processStatus={processStatus}
-          thumbnailStatus={thumbnailStatus}
+          processStatus={isUploading ? "processing" : processStatus}
+          thumbnailStatus={isUploading ? "processing" : thumbnailStatus}
         />
 
         <main
